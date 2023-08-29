@@ -6,7 +6,10 @@ import (
 	"github.com/oarriet/subdivx-dl/imdb"
 	"github.com/oarriet/subdivx-dl/subdivx"
 	"log"
+	"path"
 )
+
+const folderToDownload = "build"
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -31,4 +34,17 @@ func main() {
 		log.Println(string(jMovie))
 	}
 
+	//let's download the first subtitle
+	subdivxMovie := subdivxMovies[0]
+	subdivxSubtitle, err := subdivxAPI.DownloadSubtitle(subdivxMovie.Url)
+	if err != nil {
+		log.Fatal(err)
+	}
+	//defer subdivxSubtitle.Close()
+
+	//save the subtitle
+	err = subdivxAPI.SaveSubtitle(subdivxSubtitle, path.Join(folderToDownload, fmt.Sprintf("%s.zip", subdivxMovie.Title)))
+	if err != nil {
+		log.Fatal(err)
+	}
 }

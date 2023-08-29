@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/oarriet/subdivx-dl/subdivx/elements"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -20,6 +23,8 @@ const (
 
 type API interface {
 	GetMoviesByTitle(title string) ([]elements.SubdivxMovie, error)
+	DownloadSubtitle(pageUrl string) (io.ReadCloser, error)
+	SaveSubtitle(subtitleReadCloser io.ReadCloser, filename string) error
 }
 
 type api struct {
@@ -121,4 +126,89 @@ func stripData(data string) (downloadsCount int, cds int, commentsCount int, for
 	}
 
 	return downloadsCount, cds, commentsCount, format, uploadedBy, uploadedDate
+}
+
+// DownloadSubtitle returns the subtitle file from the given downloadPageUrl, caller must close the io.ReadCloser
+func (a *api) DownloadSubtitle(downloadPageUrl string) (io.ReadCloser, error) {
+	if len(downloadPageUrl) == 0 {
+		return nil, errors.New("downloadPageUrl cannot be empty")
+	}
+
+	client := http.Client{
+		Timeout: subdivxAPITimeout,
+	}
+
+	downloadPageResponse, err := client.Get(downloadPageUrl)
+	if err != nil {
+		return nil, err
+	}
+	defer downloadPageResponse.Body.Close()
+
+	if downloadPageResponse.StatusCode != http.StatusOK {
+		return nil, errors.New(fmt.Sprintf("downloadPageResponse status code: %d", downloadPageResponse.StatusCode))
+	}
+
+	document, err := goquery.NewDocumentFromReader(downloadPageResponse.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	downloadLink, found := document.Find(".link1").Attr("href")
+	if !found {
+		return nil, errors.New("download link not found")
+	}
+
+	subdivxURL, err := url.Parse(subdivxAPIUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	subdivxURL.Path = path.Join(subdivxURL.Path, downloadLink)
+
+	downloadResponse, err := client.Get(subdivxURL.String())
+	if err != nil {
+		return nil, err
+	}
+	defer downloadResponse.Body.Close()
+
+	if downloadResponse.StatusCode != http.StatusOK {
+		return nil, errors.New(fmt.Sprintf("downloadResponse status code: %d", downloadResponse.StatusCode))
+	}
+
+	redirectUrl := downloadResponse.Request.URL.Scheme + "://" + downloadResponse.Request.URL.Host + downloadResponse.Request.URL.Path
+
+	redirectResponse, err := client.Get(redirectUrl)
+	if err != nil {
+		return nil, err
+	}
+	defer redirectResponse.Body.Close()
+
+	if redirectResponse.StatusCode != http.StatusOK {
+		return nil, errors.New(fmt.Sprintf("redirectResponse status code: %d", redirectResponse.StatusCode))
+	}
+
+	return downloadResponse.Body, nil
+}
+
+// SaveSubtitle saves the subtitle file to the given filename. This func will close the subdivxSubtitle io.ReadCloser
+func (a *api) SaveSubtitle(subtitleReadCloser io.ReadCloser, filename string) error {
+	defer subtitleReadCloser.Close()
+
+	if len(filename) == 0 {
+		return errors.New("filename cannot be empty")
+	}
+
+	//for now let's create it under the current directory
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, subtitleReadCloser)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
