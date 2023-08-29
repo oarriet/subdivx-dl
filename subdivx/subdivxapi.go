@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/google/uuid"
 	"github.com/oarriet/subdivx-dl/subdivx/elements"
 	"io"
 	"net/http"
@@ -24,8 +25,8 @@ const (
 
 type API interface {
 	GetMoviesByTitle(title string) ([]elements.SubdivxMovie, error)
-	DownloadSubtitle(pageUrl string) (io.ReadCloser, error)
-	SaveSubtitle(subtitleReadCloser io.ReadCloser, filename string) error
+	DownloadSubtitle(pageUrl string) (rc io.ReadCloser, contentType string, err error)
+	SaveSubtitle(subtitleReadCloser io.ReadCloser, contentType string, folderPath string) error
 }
 
 type api struct {
@@ -130,9 +131,9 @@ func stripData(data string) (downloadsCount int, cds int, commentsCount int, for
 }
 
 // DownloadSubtitle returns the subtitle file from the given downloadPageUrl, caller must close the io.ReadCloser
-func (a *api) DownloadSubtitle(downloadPageUrl string) (io.ReadCloser, error) {
+func (a *api) DownloadSubtitle(downloadPageUrl string) (io.ReadCloser, string, error) {
 	if len(downloadPageUrl) == 0 {
-		return nil, errors.New("downloadPageUrl cannot be empty")
+		return nil, "", errors.New("downloadPageUrl cannot be empty")
 	}
 
 	client := http.Client{
@@ -142,32 +143,32 @@ func (a *api) DownloadSubtitle(downloadPageUrl string) (io.ReadCloser, error) {
 	//add user agent
 	req, err := http.NewRequest(http.MethodGet, downloadPageUrl, nil)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	downloadPageResponse, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer downloadPageResponse.Body.Close()
 
 	if downloadPageResponse.StatusCode != http.StatusOK {
-		return nil, errors.New(fmt.Sprintf("downloadPageResponse status code: %d", downloadPageResponse.StatusCode))
+		return nil, "", errors.New(fmt.Sprintf("downloadPageResponse status code: %d", downloadPageResponse.StatusCode))
 	}
 
 	document, err := goquery.NewDocumentFromReader(downloadPageResponse.Body)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	downloadLink, found := document.Find(".link1").Attr("href")
 	if !found {
-		return nil, errors.New("download link not found")
+		return nil, "", errors.New("download link not found")
 	}
 
 	subdivxURL, err := url.Parse(subdivxAPIUrl)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	subdivxURL.Path = path.Join(subdivxURL.Path, downloadLink)
@@ -175,13 +176,13 @@ func (a *api) DownloadSubtitle(downloadPageUrl string) (io.ReadCloser, error) {
 	//add user agent
 	req, err = http.NewRequest(http.MethodGet, subdivxURL.String(), nil)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	req.Header.Set("Cookie", subdivxCookie)
 
 	downloadResponse, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer downloadResponse.Body.Close()
 
@@ -189,34 +190,48 @@ func (a *api) DownloadSubtitle(downloadPageUrl string) (io.ReadCloser, error) {
 
 	req, err = http.NewRequest(http.MethodGet, redirectUrl, nil)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	req.Header.Set("Cookie", subdivxCookie)
 
 	redirectResponse, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return redirectResponse.Body, nil
+	return redirectResponse.Body, redirectResponse.Header.Get("Content-Type"), nil
 }
 
 // SaveSubtitle saves the subtitle file to the given filename. This func will close the subdivxSubtitle io.ReadCloser
-func (a *api) SaveSubtitle(subtitleReadCloser io.ReadCloser, filename string) error {
+func (a *api) SaveSubtitle(subtitleReadCloser io.ReadCloser, contentType string, folderPath string) error {
 	defer subtitleReadCloser.Close()
 
-	if len(filename) == 0 {
-		return errors.New("filename cannot be empty")
+	if len(folderPath) == 0 {
+		return errors.New("folderPath cannot be empty")
 	}
 
 	//create folder if it doesn't exist
-	err := os.MkdirAll(path.Dir(filename), os.ModePerm)
+	err := os.MkdirAll(path.Dir(folderPath), os.ModePerm)
 	if err != nil {
 		return err
 	}
 
+	var extension string
+	if strings.EqualFold(contentType, "application/rar") {
+		extension = ".rar"
+	}
+	if strings.EqualFold(contentType, "application/zip") {
+		extension = ".zip"
+	}
+
+	uuid, err := uuid.NewUUID()
+	if err != nil {
+		return err
+	}
+	fileName := fmt.Sprintf("%s%s", uuid.String(), extension)
+
 	//for now let's create it under the current directory
-	file, err := os.Create(filename)
+	file, err := os.Create(path.Join(folderPath, fileName))
 	if err != nil {
 		return err
 	}
