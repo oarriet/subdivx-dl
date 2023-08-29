@@ -198,6 +198,12 @@ func (a *api) SaveSubtitle(subtitleReadCloser io.ReadCloser, filename string) er
 		return errors.New("filename cannot be empty")
 	}
 
+	//create folder if it doesn't exist
+	err := os.MkdirAll(path.Dir(filename), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
 	//for now let's create it under the current directory
 	file, err := os.Create(filename)
 	if err != nil {

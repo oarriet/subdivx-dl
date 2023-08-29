@@ -9,14 +9,18 @@ import (
 	"path"
 )
 
-const folderToDownload = "build"
+const (
+	folderToDownload = "build"
+
+	movieToSearch = "tt1001520"
+)
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	//we get the movie name from the id
 	imdbAPI := imdb.NewAPI()
-	movie, err := imdbAPI.GetMovieById("tt6791350")
+	movie, err := imdbAPI.GetMovieById(movieToSearch)
 	if err != nil {
 		log.Fatal(err)
 	}
