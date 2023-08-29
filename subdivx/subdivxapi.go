@@ -19,6 +19,7 @@ import (
 const (
 	subdivxAPIUrl     = "https://subdivx.com"
 	subdivxAPITimeout = 30 * time.Second
+	subdivxCookie     = "__cfduid=dea8419e3bf838c5ec1b8624c00ba126e1599785667; con_impr=5; cant_down=16; bajo_una_vez=0; bajo_una_vez_diario=0; contd=3; cs15=566391; cs14=215575; cs13=277494; __cf_bm=edba632a5a68f4ad6890f4f58ff571044dc84d1a-1599793485-1800-Ac0IxmDEnWMbTjrtkhEluRQMTH6hnt2KhSJGCa7KPLxY"
 )
 
 type API interface {
@@ -138,7 +139,13 @@ func (a *api) DownloadSubtitle(downloadPageUrl string) (io.ReadCloser, error) {
 		Timeout: subdivxAPITimeout,
 	}
 
-	downloadPageResponse, err := client.Get(downloadPageUrl)
+	//add user agent
+	req, err := http.NewRequest(http.MethodGet, downloadPageUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	downloadPageResponse, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -165,29 +172,33 @@ func (a *api) DownloadSubtitle(downloadPageUrl string) (io.ReadCloser, error) {
 
 	subdivxURL.Path = path.Join(subdivxURL.Path, downloadLink)
 
-	downloadResponse, err := client.Get(subdivxURL.String())
+	//add user agent
+	req, err = http.NewRequest(http.MethodGet, subdivxURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Cookie", subdivxCookie)
+
+	downloadResponse, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer downloadResponse.Body.Close()
 
-	if downloadResponse.StatusCode != http.StatusOK {
-		return nil, errors.New(fmt.Sprintf("downloadResponse status code: %d", downloadResponse.StatusCode))
-	}
-
 	redirectUrl := downloadResponse.Request.URL.Scheme + "://" + downloadResponse.Request.URL.Host + downloadResponse.Request.URL.Path
 
-	redirectResponse, err := client.Get(redirectUrl)
+	req, err = http.NewRequest(http.MethodGet, redirectUrl, nil)
 	if err != nil {
 		return nil, err
 	}
-	defer redirectResponse.Body.Close()
+	req.Header.Set("Cookie", subdivxCookie)
 
-	if redirectResponse.StatusCode != http.StatusOK {
-		return nil, errors.New(fmt.Sprintf("redirectResponse status code: %d", redirectResponse.StatusCode))
+	redirectResponse, err := client.Do(req)
+	if err != nil {
+		return nil, err
 	}
 
-	return downloadResponse.Body, nil
+	return redirectResponse.Body, nil
 }
 
 // SaveSubtitle saves the subtitle file to the given filename. This func will close the subdivxSubtitle io.ReadCloser
