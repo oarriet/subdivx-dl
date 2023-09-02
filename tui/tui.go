@@ -78,7 +78,7 @@ func initialModel() model {
 	t.SetStyles(s)
 
 	ta := textarea.New()
-	ta.Placeholder = "No data yet"
+	ta.Placeholder = "Input the IMDb movie/TV id and press enter"
 	ta.SetHeight(3)
 	ta.SetWidth(100)
 
