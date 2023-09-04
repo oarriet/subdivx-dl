@@ -8,10 +8,6 @@ import (
 	"os"
 )
 
-const (
-	folderToDownload = "build"
-)
-
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
