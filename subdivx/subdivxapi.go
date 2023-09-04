@@ -61,7 +61,7 @@ func (a *api) GetMoviesByTitle(title string) ([]elements.SubdivxMovie, error) {
 	defer subdivxResponse.Body.Close()
 
 	if subdivxResponse.StatusCode != http.StatusOK {
-		return nil, errors.New(fmt.Sprintf("subdivx API response status code: %d", subdivxResponse.StatusCode))
+		return nil, fmt.Errorf("subdivx API response status code: %d", subdivxResponse.StatusCode)
 	}
 
 	document, err := goquery.NewDocumentFromReader(subdivxResponse.Body)
@@ -154,7 +154,7 @@ func (a *api) DownloadSubtitle(downloadPageUrl string) (io.ReadCloser, string, e
 	defer downloadPageResponse.Body.Close()
 
 	if downloadPageResponse.StatusCode != http.StatusOK {
-		return nil, "", errors.New(fmt.Sprintf("downloadPageResponse status code: %d", downloadPageResponse.StatusCode))
+		return nil, "", fmt.Errorf("downloadPageResponse status code: %d", downloadPageResponse.StatusCode)
 	}
 
 	document, err := goquery.NewDocumentFromReader(downloadPageResponse.Body)

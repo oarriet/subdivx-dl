@@ -52,7 +52,7 @@ func (a *api) GetMovieById(id string) (*elements.ImdbMovie, error) {
 	defer imdbResponse.Body.Close()
 
 	if imdbResponse.StatusCode != http.StatusOK {
-		return nil, errors.New(fmt.Sprintf("imdb API response status code: %d", imdbResponse.StatusCode))
+		return nil, fmt.Errorf("imdb API response status code: %d", imdbResponse.StatusCode)
 	}
 
 	body, err := io.ReadAll(imdbResponse.Body)

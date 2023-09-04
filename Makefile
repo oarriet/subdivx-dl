@@ -13,3 +13,6 @@ test:
 
 clean:
 	rm -rf build/*
+
+lint:
+	golangci-lint run ./...

@@ -115,7 +115,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Sequence(m.spinner.Tick, m.refreshTableWithData(m.textInput.Value()))
 		case tea.KeyDown, tea.KeyUp:
 			m.table, cmd = m.table.Update(msg)
-			m.textarea.SetValue(fmt.Sprintf("%s", m.subdivxMovies[m.table.Cursor()].Description))
+			m.textarea.SetValue(m.subdivxMovies[m.table.Cursor()].Description)
 			return m, cmd
 		case tea.KeyCtrlC, tea.KeyEsc:
 			return m, tea.Quit
@@ -142,12 +142,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			rows = append(rows, table.Row{
 				subdivxMovie.Title,
 				subdivxMovie.UploadedBy,
-				fmt.Sprintf("%s", utils.FormatIntWithCommasAndPoints(subdivxMovie.DownloadsCount)),
-				fmt.Sprintf("%s", subdivxMovie.UploadedDate.Format("2006-01-02")),
+				utils.FormatIntWithCommasAndPoints(subdivxMovie.DownloadsCount),
+				subdivxMovie.UploadedDate.Format("2006-01-02"),
 			})
 		}
 		if len(rows) > 0 {
-			m.textarea.SetValue(fmt.Sprintf("%s", msg[0].Description))
+			m.textarea.SetValue(msg[0].Description)
 		}
 		m.subdivxMovies = msg
 		//stop the spinner
