@@ -137,6 +137,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case []elements.SubdivxMovie:
+		//handle if there are no results
+		if len(msg) == 0 {
+			m.textarea.SetValue("No results found")
+			//stop the spinner
+			m.inProgress = false
+			m.table.SetRows([]table.Row{})
+			return m, nil
+		}
+
+		//handle if there are results
 		var rows []table.Row
 		for _, subdivxMovie := range msg {
 			rows = append(rows, table.Row{
