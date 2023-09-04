@@ -224,8 +224,3 @@ func (m model) downloadSubtitle(movie elements.SubdivxMovie) tea.Cmd {
 		}
 	}
 }
-
-type SubMsg struct {
-	Succeed  bool
-	SubNames []string
-}
