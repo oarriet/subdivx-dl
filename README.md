@@ -10,6 +10,7 @@ The main purpose of this project is to be able to pass an IMDB ID and download t
   * **LinkedIn:** https://www.linkedin.com/in/oarriet/ 
 
 ## References
-1. Using IMDB API: https://github.com/tuhinpal/imdb-api
-2. Another Go terminal app for SubDivX: https://github.com/csq/subdivx-dl
-3. Bubbletea: A powerful little TUI framework https://github.com/charmbracelet/bubbletea
+1. [imdb-api](https://github.com/tuhinpal/imdb-api): Serverless IMDB API powered by Cloudflare Worker 
+2. [subdivx-dl](https://github.com/csq/subdivx-dl): CLI tool for download subtitles from SubDivX
+3. [bubbletea](https://github.com/charmbracelet/bubbletea): A powerful little TUI framework 🏗
+4. [archive](https://github.com/mholt/archiver): Easily create & extract archives, and compress & decompress files of various formats 

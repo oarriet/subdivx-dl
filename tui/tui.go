@@ -12,6 +12,11 @@ import (
 	"github.com/oarriet/subdivx-dl/subdivx"
 	"github.com/oarriet/subdivx-dl/subdivx/elements"
 	"github.com/oarriet/subdivx-dl/utils"
+	"strings"
+)
+
+const (
+	folderToDownload = "build"
 )
 
 var baseStyle = lipgloss.NewStyle().
@@ -41,7 +46,7 @@ type model struct {
 func initialModel() model {
 	spin := spinner.New()
 	spin.Spinner = spinner.Dot
-	spin.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	spin.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("57"))
 
 	ti := textinput.New()
 	ti.Placeholder = "tt0111161"
@@ -114,6 +119,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		case tea.KeyCtrlC, tea.KeyEsc:
 			return m, tea.Quit
+		case tea.KeyCtrlD:
+			if len(m.table.Rows()) == 0 {
+				return m, nil
+			}
+			m.inProgress = true
+			return m, tea.Sequence(m.spinner.Tick, m.downloadSubtitle(m.subdivxMovies[m.table.Cursor()]))
 		}
 
 	case spinner.TickMsg:
@@ -153,6 +164,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.table.SetRows([]table.Row{})
 		m.err = msg
 		return m, nil
+
+	case SubMsg:
+		m.textarea.SetValue(fmt.Sprintf("Subtitle downloaded successfully: %s", strings.Join(msg.SubNames, ", ")))
+		//stop the spinner
+		m.inProgress = false
 	}
 
 	m.textInput, cmd = m.textInput.Update(msg)
@@ -160,7 +176,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-
 	return fmt.Sprintf(
 		"IMDb Movie/TV id? \n\n%s %s\n%s\n%s\n\n%s",
 		m.spinner.View(),
@@ -169,7 +184,6 @@ func (m model) View() string {
 		m.textarea.View(),
 		"(d to download, esc to quit)",
 	) + "\n"
-
 }
 
 func (m model) refreshTableWithData(imdbId string) tea.Cmd {
@@ -189,4 +203,29 @@ func (m model) refreshTableWithData(imdbId string) tea.Cmd {
 
 		return subdivxMovies
 	}
+}
+
+func (m model) downloadSubtitle(movie elements.SubdivxMovie) tea.Cmd {
+	return func() tea.Msg {
+		subdivxAPI := subdivx.NewAPI()
+		subdivxSubtitle, contentType, err := subdivxAPI.DownloadSubtitle(movie.Url)
+		if err != nil {
+			return errMsg(err)
+		}
+
+		//save the subtitle
+		subName, err := subdivxAPI.SaveSubtitle(subdivxSubtitle, contentType, folderToDownload)
+		if err != nil {
+			return errMsg(err)
+		}
+		return SubMsg{
+			Succeed:  true,
+			SubNames: subName,
+		}
+	}
+}
+
+type SubMsg struct {
+	Succeed  bool
+	SubNames []string
 }

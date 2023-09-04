@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/gen2brain/go-unarr"
 	"github.com/google/uuid"
 	"github.com/oarriet/subdivx-dl/subdivx/elements"
 	"io"
@@ -26,7 +27,7 @@ const (
 type API interface {
 	GetMoviesByTitle(title string) ([]elements.SubdivxMovie, error)
 	DownloadSubtitle(pageUrl string) (rc io.ReadCloser, contentType string, err error)
-	SaveSubtitle(subtitleReadCloser io.ReadCloser, contentType string, folderPath string) error
+	SaveSubtitle(subtitleReadCloser io.ReadCloser, contentType string, folderPath string) ([]string, error)
 }
 
 type api struct {
@@ -203,20 +204,21 @@ func (a *api) DownloadSubtitle(downloadPageUrl string) (io.ReadCloser, string, e
 }
 
 // SaveSubtitle saves the subtitle file to the given filename. This func will close the subdivxSubtitle io.ReadCloser
-func (a *api) SaveSubtitle(subtitleReadCloser io.ReadCloser, contentType string, folderPath string) error {
+func (a *api) SaveSubtitle(subtitleReadCloser io.ReadCloser, contentType string, folderPath string) ([]string, error) {
 	defer subtitleReadCloser.Close()
 
 	if len(folderPath) == 0 {
-		return errors.New("folderPath cannot be empty")
+		return nil, errors.New("folderPath cannot be empty")
 	}
 
 	//create folder if it doesn't exist
 	err := os.MkdirAll(path.Dir(folderPath), os.ModePerm)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var extension string
+	//var format archiver.Extractor
 	if strings.EqualFold(contentType, "application/rar") {
 		extension = ".rar"
 	}
@@ -226,21 +228,36 @@ func (a *api) SaveSubtitle(subtitleReadCloser io.ReadCloser, contentType string,
 
 	uuid, err := uuid.NewUUID()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	fileName := fmt.Sprintf("%s%s", uuid.String(), extension)
 
 	//for now let's create it under the current directory
 	file, err := os.Create(path.Join(folderPath, fileName))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer file.Close()
 
 	_, err = io.Copy(file, subtitleReadCloser)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	archive, err := unarr.NewArchive(file.Name())
+	if err != nil {
+		return nil, err
+	}
+	defer archive.Close()
+
+	subNames, err := archive.Extract(folderPath)
+	if err != nil {
+		return nil, err
+	} else {
+		//delete the archive file
+		_ = os.Remove(file.Name())
+		//ignore the error because the whole point of this func is to save the subtitle
+	}
+
+	return subNames, nil
 }
