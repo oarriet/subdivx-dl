@@ -1,6 +1,8 @@
 # SubDivX-dl:  Subtitle Downloader
 This project is in development. It is a terminal application to download subtitles from subdivx.com.
 
+![subdivx-dl screenshot](manual/screenshots/subdivx-dl.png)
+
 ## Purpose
 The main purpose of this project is to be able to pass an IMDB ID and download the subtitles for the movie or series.
 
