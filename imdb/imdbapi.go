@@ -66,5 +66,9 @@ func (a *api) GetMovieById(id string) (*elements.ImdbMovie, error) {
 		return nil, err
 	}
 
+	if movie.ContentType != "Movie" {
+		return nil, errors.New("not a movie")
+	}
+
 	return &movie, nil
 }
